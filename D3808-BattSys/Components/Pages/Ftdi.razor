@@ -1,0 +1,28 @@
+@page "/ftdi"
+
+<PageTitle>FTDI</PageTitle>
+
+<h1>
+    <span class="bi bi-usb-drive" aria-hidden="true"></span> FTDI
+</h1>
+
+<p>This page is for FTDI device interaction.</p>
+
+<button class="btn btn-success" @onclick="OnFtdiButtonClick">
+    <span class="bi bi-lightning-charge-fill" aria-hidden="true"></span> Execute FTDI Action
+</button>
+
+@if (!string.IsNullOrEmpty(message))
+{
+    <div class="alert alert-info mt-3">@message</div>
+}
+
+@code {
+    private string? message;
+
+    private void OnFtdiButtonClick()
+    {
+        // Placeholder for FTDI action logic
+        message = $"FTDI action executed at {DateTime.Now:T}";
+    }
+}
