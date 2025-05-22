@@ -18,6 +18,10 @@
     <span class="bi bi-search" aria-hidden="true"></span> Get Device List
 </button>
 
+<button class="btn btn-warning ms-2" @onclick="OnGetDeviceInfoDetailClick">
+    <span class="bi bi-info-circle" aria-hidden="true"></span> Get Device Info Detail
+</button>
+
 @if (!string.IsNullOrEmpty(message))
 {
     <div class="alert alert-info mt-3">@message</div>
@@ -45,9 +49,31 @@
     </div>
 }
 
+@if (deviceInfoDetails is not null)
+{
+    <div class="mt-3">
+        <h5>FTDI Device Info Details:</h5>
+        <ul>
+            @foreach (var info in deviceInfoDetails)
+            {
+                <li>
+                    <strong>@info.Description</strong><br />
+                    Serial: @info.SerialNumber<br />
+                    Flags: @info.Flags<br />
+                    Type: @info.Type<br />
+                    ID: @info.ID<br />
+                    Location: @info.LocId<br />
+                    <!-- Removed Handle as it does not exist -->
+                </li>
+            }
+        </ul>
+    </div>
+}
+
 @code {
     private string? message;
     private FTDI.FT_DEVICE_INFO_NODE[]? deviceList;
+    private List<FTDI.FT_DEVICE_INFO_NODE>? deviceInfoDetails;
 
     private async Task OnFtdiButtonClick()
     {
@@ -93,6 +119,51 @@
         {
             message = $"Exception: {ex.Message}";
             deviceList = null;
+        }
+    }
+
+    private async Task OnGetDeviceInfoDetailClick()
+    {
+        await Task.Yield();
+        deviceInfoDetails = null;
+        try
+        {
+            var ftdi = new FTDI();
+            uint count = 0;
+            var status = ftdi.GetNumberOfDevices(ref count);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                message = $"Error getting device count: {status}";
+                return;
+            }
+
+            if (count == 0)
+            {
+                message = "No FTDI devices found.";
+                return;
+            }
+
+            var list = new FTDI.FT_DEVICE_INFO_NODE[count];
+            status = ftdi.GetDeviceList(list);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                message = $"Error getting device list: {status}";
+                return;
+            }
+
+            deviceInfoDetails = new List<FTDI.FT_DEVICE_INFO_NODE>();
+            for (uint i = 0; i < count; i++)
+            {
+                // FT_GetDeviceInfoDetail is not directly exposed in FTD2XX_NET, but GetDeviceList returns detailed info.
+                // So we just display all fields from FT_DEVICE_INFO_NODE.
+                deviceInfoDetails.Add(list[i]);
+            }
+
+            message = $"Device info detail for {count} FTDI device(s) retrieved.";
+        }
+        catch (Exception ex)
+        {
+            message = $"Exception: {ex.Message}";
         }
     }
 }
