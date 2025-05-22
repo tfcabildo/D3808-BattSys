@@ -1,5 +1,6 @@
 @page "/ftdi"
 @rendermode InteractiveServer
+@using FTD2XX_NET
 
 <PageTitle>FTDI</PageTitle>
 
@@ -13,18 +14,85 @@
     <span class="bi bi-lightning-charge-fill" aria-hidden="true"></span> Execute FTDI Action
 </button>
 
+<button class="btn btn-info ms-2" @onclick="OnGetDeviceListClick">
+    <span class="bi bi-search" aria-hidden="true"></span> Get Device List
+</button>
+
 @if (!string.IsNullOrEmpty(message))
 {
     <div class="alert alert-info mt-3">@message</div>
 }
 
+@if (deviceList is not null)
+{
+    <div class="mt-3">
+        <h5>FTDI Devices Found:</h5>
+        @if (deviceList.Length == 0)
+        {
+            <div class="alert alert-warning">No FTDI devices found.</div>
+        }
+        else
+        {
+            <ul>
+                @foreach (var dev in deviceList)
+                {
+                    <li>
+                        <strong>@dev.Description</strong> (Serial: @dev.SerialNumber, Location: @dev.LocId)
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+}
+
 @code {
     private string? message;
+    private FTDI.FT_DEVICE_INFO_NODE[]? deviceList;
 
     private async Task OnFtdiButtonClick()
     {
-        // Simulate async work (optional)
         await Task.Yield();
         message = $"FTDI action executed at {DateTime.Now:T}";
+    }
+
+    private async Task OnGetDeviceListClick()
+    {
+        await Task.Yield();
+        try
+        {
+            var ftdi = new FTDI();
+            uint count = 0;
+            var status = ftdi.GetNumberOfDevices(ref count);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                message = $"Error getting device count: {status}";
+                deviceList = null;
+                return;
+            }
+
+            if (count == 0)
+            {
+                message = "No FTDI devices found.";
+                deviceList = Array.Empty<FTDI.FT_DEVICE_INFO_NODE>();
+                return;
+            }
+
+            var list = new FTDI.FT_DEVICE_INFO_NODE[count];
+            status = ftdi.GetDeviceList(list);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                message = $"Error getting device list: {status}";
+                deviceList = null;
+                return;
+            }
+
+            deviceList = list;
+            message = $"Found {count} FTDI device(s).";
+        }
+        catch (Exception ex)
+        {
+            message = $"Exception: {ex.Message}";
+            deviceList = null;
+        }
     }
 }
