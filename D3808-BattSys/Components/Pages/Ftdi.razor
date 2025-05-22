@@ -10,10 +10,6 @@
 
 <p>This page is for FTDI device interaction.</p>
 
-<button class="btn btn-success" @onclick="OnFtdiButtonClick">
-    <span class="bi bi-lightning-charge-fill" aria-hidden="true"></span> Execute FTDI Action
-</button>
-
 <button class="btn btn-info ms-2" @onclick="OnGetDeviceListClick">
     <span class="bi bi-search" aria-hidden="true"></span> Get Device List
 </button>
@@ -74,12 +70,6 @@
     private string? message;
     private FTDI.FT_DEVICE_INFO_NODE[]? deviceList;
     private List<FTDI.FT_DEVICE_INFO_NODE>? deviceInfoDetails;
-
-    private async Task OnFtdiButtonClick()
-    {
-        await Task.Yield();
-        message = $"FTDI action executed at {DateTime.Now:T}";
-    }
 
     private async Task OnGetDeviceListClick()
     {
