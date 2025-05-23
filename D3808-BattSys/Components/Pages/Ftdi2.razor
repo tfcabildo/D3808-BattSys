@@ -25,47 +25,71 @@
     <div class="alert alert-info mt-3">@message</div>
 }
 
-@if (deviceList is not null)
-{
-    <div class="mt-3">
-        <h5>FTDI Devices Found:</h5>
-        @if (deviceList.Length == 0)
-        {
-            <div class="alert alert-warning">No FTDI devices found.</div>
-        }
-        else
-        {
-            <ul>
-                @foreach (var dev in deviceList)
+<!-- Two-column layout for device info and I2C scan -->
+<div class="row">
+    <!-- Left column: FTDI device list/info -->
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">FTDI Devices</h5>
+                @if (deviceList is not null)
                 {
-                    <li>
-                        <strong>@dev.Description</strong> (Serial: @dev.SerialNumber, Location: @dev.LocId)
-                    </li>
+                    <div>
+                        <h6>FTDI Devices Found:</h6>
+                        @if (deviceList.Length == 0)
+                        {
+                            <div class="alert alert-warning">No FTDI devices found.</div>
+                        }
+                        else
+                        {
+                            <ul>
+                                @foreach (var dev in deviceList)
+                                {
+                                    <li>
+                                        <strong>@dev.Description</strong> (Serial: @dev.SerialNumber, Location: @dev.LocId)
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
                 }
-            </ul>
-        }
-    </div>
-}
 
-@if (deviceInfoDetails is not null)
-{
-    <div class="mt-3">
-        <h5>FTDI Device Info Details:</h5>
-        <ul>
-            @foreach (var info in deviceInfoDetails)
-            {
-                <li>
-                    <strong>@info.Description</strong><br />
-                    Serial: @info.SerialNumber<br />
-                    Flags: @info.Flags<br />
-                    Type: @info.Type<br />
-                    ID: @info.ID<br />
-                    Location: @info.LocId<br />
-                </li>
-            }
-        </ul>
+                @if (deviceInfoDetails is not null)
+                {
+                    <div class="mt-3">
+                        <h6>FTDI Device Info Details:</h6>
+                        <ul>
+                            @foreach (var info in deviceInfoDetails)
+                            {
+                                <li>
+                                    <strong>@info.Description</strong><br />
+                                    Serial: @info.SerialNumber<br />
+                                    Flags: @info.Flags<br />
+                                    Type: @info.Type<br />
+                                    ID: @info.ID<br />
+                                    Location: @info.LocId<br />
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
+        </div>
     </div>
-}
+
+    <!-- Right column: I2C slave devices -->
+    <div class="col-md-6">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h5 class="card-title">I2C Slave Devices</h5>
+                <!-- TODO: Populate this section with I2C scan results -->
+                <div class="alert alert-secondary">
+                    No I2C scan performed yet.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
     private string? message;
