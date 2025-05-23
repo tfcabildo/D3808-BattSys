@@ -85,6 +85,12 @@ namespace D3808_BattSys.Interop
         [DllImport("ftd2xx.dll")]
         public static extern int FT_Close(IntPtr ftHandle);
 
+        [DllImport("ftd2xx.dll")]
+        public static extern int FT_Write(IntPtr ftHandle, byte[] lpBuffer, uint dwBytesToWrite, ref uint lpdwBytesWritten);
+
+        [DllImport("ftd2xx.dll")]
+        public static extern int FT_Read(IntPtr ftHandle, byte[] lpBuffer, uint dwBytesToRead, ref uint lpdwBytesReturned);
+
         // Add more as needed from the D2XX Programmer's Guide
     }
 }

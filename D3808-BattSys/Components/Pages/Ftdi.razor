@@ -24,7 +24,7 @@
 </button>
 
 <button class="btn btn-primary ms-2" @onclick="OnGetBitModeClick">
-    <span class="bi bi-eye"></span> Get Bit Mode
+    <span class="bi bi-eye"></span> Check Mode
 </button>
 
 @if (!string.IsNullOrEmpty(message))
@@ -210,15 +210,35 @@
                 return;
             }
 
-            byte modeValue = 0;
-            status = D2xxNative.FT_GetBitMode(ftHandle, ref modeValue);
-            if (status != 0)
+            // Write 0xAA (MPSSE sync command)
+            byte[] syncCmd = { 0xAA };
+            uint bytesWritten = 0;
+            status = D2xxNative.FT_Write(ftHandle, syncCmd, 1, ref bytesWritten);
+            if (status != 0 || bytesWritten != 1)
             {
-                message = $"FT_GetBitMode failed: {status}";
+                message = $"FT_Write failed: {status}, bytes written: {bytesWritten}";
+                return;
+            }
+
+            await Task.Delay(100); // Increased delay to 100ms
+
+            // Read response (should be 0xFA 0xAA if MPSSE is active)
+            byte[] response = new byte[2];
+            uint bytesRead = 0;
+            status = D2xxNative.FT_Read(ftHandle, response, 2, ref bytesRead);
+            if (status != 0 || bytesRead < 2)
+            {
+                message = $"FT_Read failed: {status}, bytes read: {bytesRead}";
+                return;
+            }
+
+            if (response[0] == 0xFA && response[1] == 0xAA)
+            {
+                message = "MPSSE mode is ACTIVE (echo back test passed: 0xFA 0xAA).";
             }
             else
             {
-                message = $"Bit Mode Raw Value: 0x{modeValue:X2}";
+                message = $"MPSSE mode NOT active or echo failed. Response: 0x{response[0]:X2} 0x{response[1]:X2}";
             }
         }
         catch (Exception ex)
