@@ -79,6 +79,12 @@ namespace D3808_BattSys.Interop
         [DllImport("ftd2xx.dll")]
         public static extern int FT_SetDeadmanTimeout(IntPtr ftHandle, uint DeadmanTimeout);
 
+        [DllImport("ftd2xx.dll")]
+        public static extern int FT_Open(int deviceNumber, ref IntPtr ftHandle);
+
+        [DllImport("ftd2xx.dll")]
+        public static extern int FT_Close(IntPtr ftHandle);
+
         // Add more as needed from the D2XX Programmer's Guide
     }
 }
