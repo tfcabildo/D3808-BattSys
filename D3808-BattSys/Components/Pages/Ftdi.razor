@@ -19,11 +19,7 @@
     <span class="bi bi-info-circle" aria-hidden="true"></span> Get Device Info Detail
 </button>
 
-<button class="btn btn-secondary ms-2" @onclick="OnSetMpsseModeClick">
-    <span class="bi bi-gear"></span> Set MPSSE Mode 
-</button>
-
-<button class="btn btn-primary ms-2" @onclick="OnGetBitModeClick">
+<button class="btn btn-primary ms-2" @onclick="OnCheckModeClick">
     <span class="bi bi-eye"></span> Check Mode
 </button>
 
@@ -172,12 +168,14 @@
         }
     }
 
-    private async Task OnSetMpsseModeClick()
+    private async Task OnCheckModeClick()
     {
         message = null;
-        deviceList = null; // Clear both when performing other actions
+        deviceList = null;
         deviceInfoDetails = null;
         await Task.Yield();
+
+        // Step 1: Set MPSSE mode using FTDI managed API
         try
         {
             var ftdi = new FTDI();
@@ -197,26 +195,18 @@
             }
 
             await Task.Delay(50);
-
-            message = "Device set to MPSSE mode.";
             ftdi.Close();
         }
         catch (Exception ex)
         {
-            message = $"Exception: {ex.Message}";
+            message = $"Exception during MPSSE mode set: {ex.Message}";
+            return;
         }
-    }
 
-    private async Task OnGetBitModeClick()
-    {
-        message = null;
-        deviceList = null;
-        deviceInfoDetails = null;
-        await Task.Yield();
+        // Step 2: Check MPSSE mode using D2xxNative
         IntPtr ftHandle = IntPtr.Zero;
         try
         {
-            // Open the first FTDI device (index 0)
             int status = D2xxNative.FT_Open(0, ref ftHandle);
             if (status != 0)
             {
@@ -234,7 +224,7 @@
                 return;
             }
 
-            await Task.Delay(100); // Increased delay to 100ms
+            await Task.Delay(100);
 
             // Read response (should be 0xFA 0xAA if MPSSE is active)
             byte[] response = new byte[2];
@@ -257,7 +247,7 @@
         }
         catch (Exception ex)
         {
-            message = $"Exception: {ex.Message}";
+            message = $"Exception during MPSSE check: {ex.Message}";
         }
         finally
         {
