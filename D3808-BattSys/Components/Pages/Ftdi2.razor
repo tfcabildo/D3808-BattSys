@@ -82,10 +82,45 @@
         <div class="card mb-3">
             <div class="card-body">
                 <h5 class="card-title">I2C Slave Devices</h5>
-                <!-- TODO: Populate this section with I2C scan results -->
-                <div class="alert alert-secondary">
-                    No I2C scan performed yet.
-                </div>
+                <button class="btn btn-success mb-2" @onclick="ScanI2cDevicesAsync">
+                    <span class="bi bi-search"></span> Scan I2C Bus
+                </button>
+                @if (i2cScanInProgress)
+                {
+                    <div class="alert alert-info">Scanning I2C bus...</div>
+                }
+                else if (i2cDevices is not null)
+                {
+                    @if (i2cDevices.Count == 0)
+                    {
+                        <div class="alert alert-warning">No I2C slave devices found.</div>
+                    }
+                    else
+                    {
+                        <ul>
+                            @foreach (var dev in i2cDevices)
+                            {
+                                <li>
+                                    Address: 0x@dev.Address.ToString("X2")
+                                    @if (!string.IsNullOrEmpty(dev.Name))
+                                    {
+                                        <span class="ms-2 text-muted">(@dev.Name)</span>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                }
+                else
+                {
+                    <div class="alert alert-secondary">
+                        No I2C scan performed yet.
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(i2cScanMessage))
+                {
+                    <div class="alert alert-danger mt-2">@i2cScanMessage</div>
+                }
             </div>
         </div>
     </div>
@@ -97,6 +132,32 @@
     private List<FTDI.FT_DEVICE_INFO_NODE>? deviceInfoDetails;
     private bool deviceConnected = false;
     private System.Threading.Timer? _timer;
+
+    // I2C scan state
+    private List<I2cDeviceInfo>? i2cDevices;
+    private bool i2cScanInProgress = false;
+    private string? i2cScanMessage;
+
+    // Known I2C device names (expand as needed)
+    private static readonly Dictionary<byte, string> I2cAddressNames = new()
+    {
+        { 0x50, "EEPROM (AT24Cxx)" },
+        { 0x68, "RTC (DS3231/DS1307)" },
+        { 0x76, "Pressure Sensor (BME280/BMP280)" },
+        { 0x77, "Pressure Sensor (BME280/BMP180/BMP085)" },
+        { 0x23, "Light Sensor (BH1750)" },
+        { 0x3C, "OLED Display (SSD1306)" },
+        { 0x36, "MAX17301 1" },
+        { 0x6C, "MAX17301 2" },
+        { 0x6D, "MAX17301 3" }
+        // Add more as needed
+    };
+
+    private class I2cDeviceInfo
+    {
+        public byte Address { get; set; }
+        public string? Name { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -396,6 +457,91 @@
         catch (Exception ex)
         {
             message = $"Exception: {ex.Message}";
+        }
+    }
+
+    private async Task ScanI2cDevicesAsync()
+    {
+        i2cScanInProgress = true;
+        i2cScanMessage = null;
+        i2cDevices = null;
+        StateHasChanged();
+
+        await Task.Yield();
+
+        var foundDevices = new List<I2cDeviceInfo>();
+        IntPtr handle = IntPtr.Zero;
+        try
+        {
+            // Get number of I2C channels
+            uint numChannels = 0;
+            var status = LibMpsse.I2C_GetNumChannels(ref numChannels);
+            if (status != LibMpsse.FT_STATUS.FT_OK || numChannels == 0)
+            {
+                i2cScanMessage = $"No I2C channels found (status: {status}).";
+                return;
+            }
+
+            // Open first channel
+            status = LibMpsse.I2C_OpenChannel(0, ref handle);
+            if (status != LibMpsse.FT_STATUS.FT_OK)
+            {
+                i2cScanMessage = $"I2C_OpenChannel failed: {status}";
+                return;
+            }
+
+            // Init channel
+            var config = new LibMpsse.ChannelConfig
+            {
+                ClockRate = 100_000, // 100kHz
+                LatencyTimer = 16,
+                Options = 0
+            };
+            status = LibMpsse.I2C_InitChannel(handle, ref config);
+            if (status != LibMpsse.FT_STATUS.FT_OK)
+            {
+                i2cScanMessage = $"I2C_InitChannel failed: {status}";
+                LibMpsse.I2C_CloseChannel(handle);
+                return;
+            }
+
+            // Scan 7-bit addresses 0x03 to 0x77 (standard I2C range)
+            for (byte addr = 0x03; addr <= 0x77; addr++)
+            {
+                uint transferred = 0;
+                byte[] dummy = new byte[1];
+                status = LibMpsse.I2C_DeviceRead(
+                    handle,
+                    (uint)(addr << 1), // 8-bit address (left-shifted)
+                    1,
+                    dummy,
+                    ref transferred,
+                    LibMpsse.I2C_TRANSFER_OPTIONS_START_BIT | LibMpsse.I2C_TRANSFER_OPTIONS_STOP_BIT | LibMpsse.I2C_TRANSFER_OPTIONS_BREAK_ON_NACK
+                );
+                if (status == LibMpsse.FT_STATUS.FT_OK)
+                {
+                    foundDevices.Add(new I2cDeviceInfo
+                    {
+                        Address = addr,
+                        Name = I2cAddressNames.TryGetValue(addr, out var name) ? name : null
+                    });
+                }
+            }
+
+            i2cDevices = foundDevices;
+        }
+        catch (Exception ex)
+        {
+            i2cScanMessage = $"Exception during I2C scan: {ex.Message}";
+        }
+        finally
+        {
+            if (handle != IntPtr.Zero)
+            {
+                LibMpsse.I2C_CloseChannel(handle);
+            }
+            i2cScanInProgress = false;
+            StateHasChanged();
         }
     }
 }
